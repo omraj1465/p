@@ -1,0 +1,249 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   String         @id @default(auto()) @map("_id") @db.ObjectId
+  username             String?        @unique
+  email                String         @unique
+  emailVerified        Boolean?       @default(false)
+  password             String
+  githubId             String?
+  githubToken          String?
+  gitUsername          String?
+  githubRefreshToken   String?
+  githubTokenExpiresAt Int?
+  firstname            String?
+  lastname             String?
+  bio                  String?
+  website              String?
+  gender               String?
+  calendar             String?
+  country              String?
+  city                 String?
+  profileImageUrl      String?
+  socialMedia          Json?
+  skills               Json?
+  createdAt            DateTime       @default(now())
+  posts                Post[]
+  comments             Comment[]
+  work                 Work[]
+  likes                Like[]
+  followers            Follow[]       @relation("UserFollowers")
+  following            Follow[]       @relation("UserFollowing")
+  jobs                 Job[]
+  projects             Project[]
+  education            Education[]
+  upvotes              Upvote[]
+  conversationsAsUser1 Conversation[] @relation("User1Conversations")
+  conversationsAsUser2 Conversation[] @relation("User2Conversations")
+  messages             Message[]
+  profileViews         ProfileView[]  @relation("ProfileViewsProfile")
+  viewedProfiles       ProfileView[]  @relation("ProfileViewsViewer")
+  notifications        Notification[] @relation("UserNotifications")
+  relatedNotifications Notification[] @relation("RelatedUserNotifications")
+  Notification         Notification[]
+}
+
+model ProfileView {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  profileId String   @db.ObjectId
+  viewerId  String   @db.ObjectId
+  viewedAt  DateTime @default(now())
+
+  profile User @relation("ProfileViewsProfile", fields: [profileId], references: [id])
+  viewer  User @relation("ProfileViewsViewer", fields: [viewerId], references: [id])
+}
+
+model Otp {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  otp       String
+  createdAt DateTime @default(now())
+}
+
+model Conversation {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user1     User      @relation("User1Conversations", fields: [user1Id], references: [id])
+  user1Id   String    @db.ObjectId
+  user2     User      @relation("User2Conversations", fields: [user2Id], references: [id])
+  user2Id   String    @db.ObjectId
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  content        String
+  createdAt      DateTime     @default(now())
+  sender         User         @relation(fields: [senderId], references: [id])
+  senderId       String       @db.ObjectId
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String       @db.ObjectId
+  isRead         Boolean      @default(false)
+}
+
+model Post {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  user         User           @relation(fields: [userId], references: [id])
+  userId       String         @db.ObjectId
+  content      String
+  createdAt    DateTime       @default(now())
+  comments     Comment[]
+  likes        Like[]
+  Notification Notification[]
+}
+
+model Like {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @db.ObjectId
+
+  @@unique([postId, userId])
+}
+
+model Comment {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  post         Post           @relation(fields: [postId], references: [id])
+  postId       String         @db.ObjectId
+  user         User           @relation(fields: [userId], references: [id])
+  userId       String         @db.ObjectId
+  content      String
+  createdAt    DateTime       @default(now())
+  Notification Notification[]
+}
+
+model Follow {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  follower   User     @relation("UserFollowers", fields: [followerId], references: [id])
+  followerId String   @db.ObjectId
+  followee   User     @relation("UserFollowing", fields: [followeeId], references: [id])
+  followeeId String   @db.ObjectId
+  createdAt  DateTime @default(now())
+
+  @@unique([followerId, followeeId])
+}
+
+model Job {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String   @db.ObjectId
+  title       String
+  description String
+  location    String?
+  salary      String?
+  company     String
+  createdAt   DateTime @default(now())
+}
+
+model Project {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  user          User     @relation(fields: [userId], references: [id])
+  userId        String   @db.ObjectId
+  title         String
+  tagline       String
+  description   String?
+  skills        Json?
+  collaborators Json?
+  projectLink   String?
+  opensource    Boolean?
+  createdAt     DateTime @default(now())
+
+  // New fields for spotlight feature
+  spotlightLaunchedAt DateTime?
+  upvotes             Int            @default(0)
+  spotlightRank       Int?
+  SpotlightWeek       SpotlightWeek? @relation(fields: [spotlightWeekId], references: [id])
+  spotlightWeekId     String?        @db.ObjectId
+  allupvotes          Upvote[]
+}
+
+model Upvote {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.ObjectId
+  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  @@unique([userId, projectId])
+}
+
+model SpotlightWeek {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  weekNumber Int
+  startDate  DateTime
+  endDate    DateTime
+  projects   Project[]
+}
+
+model Skills {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String @unique
+  logo String
+}
+
+model Work {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String   @db.ObjectId
+  company_name String
+  start_date   String
+  end_date     String
+  skills       Json?
+  description  String?
+  createdAt    DateTime @default(now())
+}
+
+model Education {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  user           User   @relation(fields: [userId], references: [id])
+  userId         String @db.ObjectId
+  institute_name String
+  degree         String
+  study          String
+  start_year     String
+  end_year       String
+}
+
+model Notification {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String           @db.ObjectId
+  content       String
+  type          NotificationType
+  relatedUserId String?          @db.ObjectId
+  postId        String?          @db.ObjectId
+  commentId     String?          @db.ObjectId
+  isRead        Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user        User     @relation("UserNotifications", fields: [userId], references: [id])
+  relatedUser User?    @relation("RelatedUserNotifications", fields: [relatedUserId], references: [id])
+  post        Post?    @relation(fields: [postId], references: [id])
+  comment     Comment? @relation(fields: [commentId], references: [id])
+  User        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([relatedUserId])
+  @@index([postId])
+  @@index([commentId])
+}
+
+enum NotificationType {
+  PROFILE_VIEW
+  POST_TAG
+  COMMENT_TAG
+  POST_LIKE
+  POST_COMMENT
+  COMMENT_REPLY
+}
